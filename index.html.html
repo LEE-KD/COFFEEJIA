@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>coffeejia | 디저트로 알아보는 커피 원두 테스트</title>
+<style>
+  :root{
+    --bg:#fff; --text:#1a1a1a; --muted:#666; 
+    --brand:#ffd457; /* 메인 */
+    --sub:#8b6a42;   /* 서브 */
+    --card:#fffdf5; --border:#e8d9b5;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Apple SD Gothic Neo,Noto Sans KR,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  .wrap{max-width:920px;margin:0 auto;padding:24px}
+  header{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 0}
+  .logo{font-weight:900;font-size:28px;letter-spacing:.2px;color:#000}
+  .sub{font-size:12px;color:var(--muted)}
+  .card{background:var(--card);border:2px solid var(--border);border-radius:16px;padding:20px}
+  .cta{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;border:2px solid var(--sub);background:var(--brand);color:#000;font-weight:800;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+  .cta.ghost{background:transparent;color:#000}
+  .grid{display:grid;gap:12px}
+  .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qtitle{font-size:22px;font-weight:900;margin:4px 0 10px}
+  .muted{color:var(--muted)}
+  .progress{height:10px;background:#fff;border:2px solid var(--border);border-radius:999px;overflow:hidden}
+  .bar{height:100%;background:var(--brand);width:0%;transition:width .25s}
+  .opt{display:flex;gap:10px;align-items:flex-start;border:2px solid var(--border);background:#fff;border-radius:14px;cursor:pointer;padding:14px;text-align:left}
+  .opt .label{font-weight:900}
+  .opt .desc{font-size:12px;color:var(--sub);margin-top:4px}
+  .opt.selected{outline:3px solid var(--sub)}
+  .row{display:flex;justify-content:space-between;gap:10px;margin-top:8px}
+  .btn{padding:10px 14px;border-radius:10px;border:2px solid var(--sub);background:var(--brand);color:#000;font-weight:900;cursor:pointer}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:#000}
+  .result-title{font-size:26px;font-weight:900;margin:2px 0}
+  .beans{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+  .bean{border:2px solid var(--border);border-radius:14px;padding:14px;background:#fff}
+  .bean .name{font-weight:900}
+  .bean .tag{color:var(--sub);font-size:13px}
+  .bean .link{margin-top:8px}
+  .bean .link a{display:inline-block;padding:8px 10px;border:2px solid var(--sub);border-radius:10px;text-decoration:none;color:#000;background:var(--brand);font-weight:800}
+  .bean ul{margin:8px 0 0 18px}
+  footer{margin-top:20px;text-align:center;color:var(--muted);font-size:12px}
+  @media (max-width:560px){
+    .grid.cols-2{grid-template-columns:1fr}
+  }
+  /* intro center */
+  .center{text-align:center}
+  .center .cta{justify-content:center}
+
+  /* taste note dots: consistent size & coloring */
+  .taste-note{font-size:16px; line-height:1.5; letter-spacing:1px; margin-top:4px}
+  .taste-note .filled{color: var(--sub);}   /* ● */
+  .taste-note .empty{color: #c5c5c5;}       /* ○ */
+
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">coffeejia</div>
+    </header>
+
+    <div id="app" class="card"></div>
+
+    <footer>© coffeejia. 디저트 취향 기반 추천은 재미 요소이며, 바리스타의 안내와 함께 즐겨보세요 ☕</footer>
+  </div>
+
+<script>
+// ===== 데이터 영역 =====
+
+// 질문 (이미지 제거, 'desc' 추가)
+const QUESTIONS = [
+  {
+    id: 1,
+    title: "오늘 카페에서 디저트를 하나 고른다면?",
+    options: [
+      { id: "q1_a", label: "과일 타르트", desc: "바삭한 타르트에 상큼한 과일로 산뜻한 한 입", score: { acidity: 3, sweet: 1 } },
+      { id: "q1_b", label: "브라우니", desc: "진득한 초콜릿 텍스처와 묵직한 풍미", score: { body: 3, bitter: 1 } },
+      { id: "q1_c", label: "크루아상", desc: "버터리한 결과 담백한 고소함", score: { balance: 3, body: 1 } },
+      { id: "q1_d", label: "치즈케이크", desc: "크리미한 질감과 은은한 단맛", score: { sweet: 3, body: 1 } }
+    ]
+  },
+  {
+    id: 2,
+    title: "스트레스 받는 날 위로받고 싶은 디저트는?",
+    options: [
+      { id: "q2_a", label: "과일 샐러드", desc: "가볍고 상큼하게 기분 전환", score: { acidity: 3, balance: 1 } },
+      { id: "q2_b", label: "부드러운 푸딩", desc: "말랑하고 포근한 위로의 한 숟가락", score: { balance: 3, sweet: 1 } },
+      { id: "q2_c", label: "진한 초콜릿 케이크", desc: "진하고 다크한 위로", score: { bitter: 3, body: 1 } },
+      { id: "q2_d", label: "견과류 쿠키", desc: "바삭함 속 고소함이 오래 가는 간식", score: { body: 3, sweet: 1 } }
+    ]
+  },
+  {
+    id: 3,
+    title: "오후에 당 떨어질 때 집어 들고 싶은 건?",
+    options: [
+      { id: "q3_a", label: "요거트 파르페", desc: "가벼운 상큼함에 달콤함을 더해 리프레시", score: { acidity: 2, sweet: 2 } },
+      { id: "q3_b", label: "버터쿠키", desc: "담백하고 균형 잡힌 기본의 맛", score: { balance: 2, sweet: 2 } },
+      { id: "q3_c", label: "다크 초콜릿", desc: "깔끔한 쌉싸름함으로 집중 ON", score: { bitter: 2, body: 2 } },
+      { id: "q3_d", label: "카라멜 푸딩", desc: "부드러운 단맛으로 당 충전", score: { sweet: 2, body: 2 } }
+    ]
+  },
+  {
+    id: 4,
+    title: "친구들과 카페에서 수다떨 때 고를 디저트는?",
+    options: [
+      { id: "q4_a", label: "레몬 케이크", desc: "상큼하게 분위기 업", score: { acidity: 3, balance: 1 } },
+      { id: "q4_b", label: "마카롱 세트", desc: "알록달록 달콤한 한 입", score: { sweet: 3, balance: 1 } },
+      { id: "q4_c", label: "에스프레소 브라우니", desc: "진한 커피향의 다크 초코 콤보", score: { bitter: 3, body: 1 } },
+      { id: "q4_d", label: "플레인 스콘(잼/버터)", desc: "버터의 고소함에 잼으로 포인트", score: { balance: 3, acidity: 1 } }
+    ]
+  },
+  {
+    id: 5,
+    title: "집중해서 일할 때 곁들이고 싶은 건?",
+    options: [
+      { id: "q5_a", label: "민트 초콜릿", desc: "상쾌함과 다크함의 상반된 매력", score: { acidity: 2, bitter: 2 } },
+      { id: "q5_b", label: "플레인 쿠키", desc: "질리지 않는 담백한 베이스", score: { balance: 4 } },
+      { id: "q5_c", label: "아몬드 브라우니", desc: "고소한 식감과 묵직한 풍미", score: { body: 2, bitter: 2 } },
+      { id: "q5_d", label: "캐러멜 타르트", desc: "달콤함으로 집중력 부스트", score: { sweet: 4 } }
+    ]
+  },
+  {
+    id: 6,
+    title: "혼자만의 여유 시간에 고르고 싶은 디저트는?",
+    options: [
+      { id: "q6_a", label: "베리 타르트", desc: "과즙 가득 상큼달콤", score: { acidity: 2, sweet: 2 } },
+      { id: "q6_b", label: "크림 푸딩", desc: "부드럽고 크리미한 휴식", score: { sweet: 2, balance: 2 } },
+      { id: "q6_c", label: "견과류 파이", desc: "바삭한 견과와 달콤함의 하모니", score: { body: 2, bitter: 2 } },
+      { id: "q6_d", label: "밀크 젤리", desc: "깔끔하고 담백한 마무리", score: { balance: 2, sweet: 2 } }
+    ]
+  }
+];
+
+// 20개 결과 타입 (더 생동감 있는 문구)
+const RESULT_TYPES = {
+  ACIDITY_BODY: { 
+    name: "복합적 탐험파", 
+    about: "첫 모금은 상큼, 끝 맛은 깊게. 화사함과 묵직함을 한 잔 안에서 발견해내는 미각 탐험가예요. 새로운 조합을 시도할수록 더 빛납니다.",
+    beans: ["케냐 AA","에티오피아 시다모"] 
+  },
+  ACIDITY_SWEET:{ 
+    name:"달콤상큼파", 
+    about:"과일의 생기와 부드러운 달콤함을 동시에 사랑하는 타입. 산뜻하지만 포근한 여운을 남기는 한 잔이 딱 맞아요.",
+    beans:["하와이안 코나","코스타리카 따라주"] 
+  },
+  ACIDITY_BITTER:{ 
+    name:"대비매력파", 
+    about:"상큼함과 다크의 경계를 넘나들며 긴장감을 즐깁니다. 반전 있는 맛을 찾을 때마다 미소가 지어지는 스타일.",
+    beans:["예멘 모카 마타리","에티오피아 예가체프"] 
+  },
+  ACIDITY_BALANCE:{ 
+    name:"세련된 산미파", 
+    about:"플로럴한 향과 또렷한 산미를 사랑하지만, 넘치지 않게 딱 예쁜 선에서 멈출 줄 알아요. 우아한 클린 컵의 주인공.",
+    beans:["에티오피아 예가체프","드 꼬르망"] 
+  },
+  BODY_ACIDITY:{ 
+    name:"진한 상큼파", 
+    about:"바디는 확실히, 마감은 상쾌하게. 강렬하지만 답답하지 않은 ‘탄탄한 한 잔’을 즐깁니다.",
+    beans:["케냐 AA","과테말라 안티구아"] 
+  },
+  BODY_SWEET:{ 
+    name:"부드러운 진함파", 
+    about:"무게감은 챙기되 거칠음은 덜어낸 취향. 고소함 위에 달콤한 여운이 포근하게 내려앉는 스타일이에요.",
+    beans:["말라위 AAA","인디아 몬순 말라바 AA"] 
+  },
+  BODY_BITTER:{ 
+    name:"진한 다크로스트파", 
+    about:"짙고 농밀한 존재감을 찾는 당신. 다크 초콜릿 같은 쌉싸름함과 두터운 바디가 진짜 커피의 매력이라 믿습니다.",
+    beans:["드 칼리","인도네시아 수마트라 만델링"] 
+  },
+  BODY_BALANCE:{ 
+    name:"든든한 밸런스파", 
+    about:"안정적인 균형 위에 약간의 무게감을 톡— 더해 만족도를 끌어올립니다. 든든하지만 깔끔하게 떨어지는 마감이 포인트.",
+    beans:["과테말라 안티구아","드 상젤리"] 
+  },
+  SWEET_ACIDITY:{ 
+    name:"상큼달콤파", 
+    about:"햇살 같은 산뜻함에 자연스러운 단맛을 얹은 스타일. 기분 좋은 에너지가 오래 남아요.",
+    beans:["하와이안 코나","코스타리카 따라주"] 
+  },
+  SWEET_BODY:{ 
+    name:"달콤한 여유파", 
+    about:"포근한 단맛과 적당한 무게감으로 휴식 모드를 켭니다. 일상의 작은 보상이 필요한 순간에 딱!",
+    beans:["브라질 산토스","온두라스 SHG"] 
+  },
+  SWEET_BITTER:{ 
+    name:"달쌉 조화파", 
+    about:"달콤함 뒤에 살짝 올라오는 어른스러운 쌉싸름. 균형감 있는 입체감이 매력적이에요.",
+    beans:["쿠바 크리스탈 마운틴","드 로렌"] 
+  },
+  SWEET_BALANCE:{ 
+    name:"부드러운 일상파", 
+    about:"매일 마셔도 질리지 않는 온화함. 부드러운 단맛과 깔끔한 밸런스가 데일리 루틴에 착 붙습니다.",
+    beans:["콜롬비아 수프리모","드 랑세르"] 
+  },
+  BITTER_ACIDITY:{ 
+    name:"쌉쌀상큼파", 
+    about:"카카오의 깊이와 레몬 제스트의 번뜩임을 한 컷에. 대비감에서 오는 짜릿함을 사랑합니다.",
+    beans:["예멘 모카 마타리","케냐 AA"] 
+  },
+  BITTER_BODY:{ 
+    name:"깊은 맛 추구파", 
+    about:"쌉싸름함과 두께감이 만드는 ‘집중의 순간’을 즐겨요. 한 모금마다 몰입도가 올라갑니다.",
+    beans:["인도네시아 수마트라 만델링","드 칼리"] 
+  },
+  BITTER_SWEET:{ 
+    name:"어른 달콤파", 
+    about:"다크함 속에서 은은하게 피어나는 단맛. 성숙하고 품위 있는 여운을 찾는 취향이에요.",
+    beans:["과테말라 안티구아","쿠바 크리스탈 마운틴"] 
+  },
+  BITTER_BALANCE:{ 
+    name:"세련된 쌉쌀파", 
+    about:"쌉쌀하지만 과하지 않게, 날카롭지 않으면서도 또렷하게. 깔끔한 마감이 특징입니다.",
+    beans:["쿠바 크리스탈 마운틴","예멘 모카 마타리"] 
+  },
+  BALANCE_ACIDITY:{ 
+    name:"깔끔한 올라운더", 
+    about:"전체 밸런스는 단단히, 산뜻함은 살짝. 누구에게나 추천하기 좋은 ‘안전한 맛의 미학’.",
+    beans:["드 꼬르망","코스타리카 따라주"] 
+  },
+  BALANCE_BODY:{ 
+    name:"든든한 밸런스파", 
+    about:"안정적인 균형 위에 약간의 무게감을 톡— 더해 만족도를 끌어올립니다. 든든하지만 깔끔하게 떨어지는 마감이 포인트.",
+    beans:["드 상젤리","온두라스 SHG"] 
+  },
+  BALANCE_SWEET:{ 
+    name:"만능 순한파", 
+    about:"누구나 편안하게 즐길 수 있는 순한 맛. 부드럽고 다정한 데일리 커피를 찾는다면 여기로.",
+    beans:["콜롬비아 수프리모","드 랑세르"] 
+  },
+  BALANCE_BITTER:{ 
+    name:"성숙한 어른파", 
+    about:"균형감은 기본, 여기에 살짝의 쌉싸름함으로 깊이를 더합니다. 담백하지만 존재감 있는 스타일.",
+    beans:["브라질 산토스","말라위 AAA"] 
+  }
+};
+
+// 원두 DB (요약 + URL)
+const BEAN_DB = {
+  "콜롬비아 수프리모": { url:"https://coffeejia.com/product/%EC%BD%9C%EB%A1%AC%EB%B9%84%EC%95%84-%EC%88%98%ED%94%84%EB%A6%AC%EB%AA%A8/118/category/63/display/1/", tagline:"단맛·신맛·쓴맛의 조화, 산뜻한 목넘김", notes:"향 ●●●●○ / 바디 ●●●○○ / 신맛 ●●●○○ / 단맛 ●●●○○ / 균형 ●●●●○", roast:"Medium (City)", pairings:["크루아상 – 버터의 고소함을 산미가 정리","밀크 초콜릿 디저트 – 밸런스를 살림"] },
+  "케냐 AA": { url:"https://coffeejia.com/product/%EC%BC%80%EB%83%90aa/119/category/63/display/1/", tagline:"강렬한 향과 풍부한 맛, 진한 산미", notes:"향 ●●●●○ / 바디 ●●●○○ / 신맛 ●●●●○", roast:"Medium (Full City)", pairings:["신선 과일·타르트 – 상큼 시너지","티라미수·치즈케이크 – 크리미 단맛이 산미를 받쳐줌"] },
+  "에티오피아 시다모": { url:"https://coffeejia.com/product/%EC%97%90%ED%8B%B0%EC%98%A4%ED%94%BC%EC%95%84-%EC%8B%9C%EB%8B%A4%EB%AA%A8/121/category/63/display/1/", tagline:"깊고 묵직한 향, 강렬한 산미", notes:"향 ●●●●○ / 바디 ●●●○○ / 신맛 ●●●●○", roast:"Medium (City)", pairings:["버터 쿠키·롤케이크 – 꽃향과 산미가 산뜻하게","치즈 카나페 – 산미가 조화"] },
+  "에티오피아 예가체프": { url:"https://coffeejia.com/product/%EC%97%90%ED%8B%B0%EC%98%A4%ED%94%BC%EC%95%84-%EC%98%88%EA%B0%80%EC%B2%B4%ED%94%84/125/category/63/display/1/", tagline:"부드러운 바디와 꽃향, 세련된 산미", notes:"향 ●●●●○ / 바디 ●●○○○ / 신맛 ●●●●○", roast:"Medium (City)", pairings:["바닐라 아이스크림·에포가토 – 향미 극대화","사과 타르트 – 상큼한 마무리"] },
+  "과테말라 안티구아": { url:"https://coffeejia.com/product/%EA%B3%BC%ED%85%8C%EB%A7%90%EB%9D%BC-%EC%95%88%ED%8B%B0%EA%B5%AC%EC%95%84/117/category/63/display/1/", tagline:"스모키·초콜릿 향, 중후한 바디", notes:"향 ●●●●○ / 바디 ●●●●○ / 쓴맛 ●●●○○", roast:"Medium-Dark (Full City)", pairings:["브라우니 – 초콜릿·견과 연결","와플+카라멜 – 달콤쌉싸름 조화"] },
+  "브라질 산토스": { url:"https://coffeejia.com/product/%EB%B8%8C%EB%9D%BC%EC%A7%88-%EC%82%B0%ED%86%A0%EC%8A%A4/120/category/63/display/1/", tagline:"부드러운 맛과 산미의 균형", notes:"향 ●●●○○ / 바디 ●●●○○ / 단맛 ●●●○○", roast:"Medium (City)", pairings:["스콘 – 담백함이 단맛을 부각","버터쿠키 – 고소·바삭 조화"] },
+  "하와이안 코나": { url:"https://coffeejia.com/product/%ED%95%98%EC%99%80%EC%9D%B4%EC%95%88-%EC%BD%94%EB%82%98/127/category/63/display/1/", tagline:"과일 같은 산미와 고급스러운 단맛", notes:"향 ●●●●○ / 바디 ●●●○○ / 단맛 ●●●●○", roast:"Medium (City)", pairings:["초콜릿 아이스크림·브라우니 – 무게 정리","롤케이크 – 부드러운 식감과 조화"] },
+  "말라위 AAA": { url:"https://coffeejia.com/product/%EB%A7%90%EB%9D%BC%EC%9C%84aaa/126/category/63/display/1/", tagline:"부드러운 바디와 고소한 향", notes:"향 ●●●○○ / 바디 ●●●○○ / 단맛 ●●●○○", roast:"Medium (City)", pairings:["머핀 – 담백+바디 조화","초코 롤케이크 – 달콤쌉싸름+고소함"] },
+  "인도네시아 수마트라 만델링": { url:"https://coffeejia.com/product/%EC%9D%B8%EB%8F%84%EB%84%A4%EC%8B%9C%EC%95%84-%EC%88%98%EB%A7%88%ED%8A%B8%EB%9D%BC-%EB%A7%8C%EB%8D%B8%EB%A7%81/124/category/63/display/1/", tagline:"낮은 산미, 강한 바디, 허브·초콜릿", notes:"향 ●●●●○ / 바디 ●●●●○ / 쓴맛 ●●●○○", roast:"Medium-Dark (Full City)", pairings:["견과·과일 파이 – 스파이시 노트와 조화","시나몬 롤 – 허브·스파이스 시너지"] },
+  "쿠바 크리스탈 마운틴": { url:"https://coffeejia.com/product/%EC%BF%A0%EB%B0%94-%ED%81%AC%EB%A6%AC%EC%8A%A4%ED%83%88-%EB%A7%88%EC%9A%B4%ED%8B%B4/142/category/63/display/1/", tagline:"고소함과 산미의 세련된 조화", notes:"향 ●●●●○ / 바디 ●●●○○ / 신맛 ●●●○○ / 단맛 ●●●○○", roast:"Medium (City)", pairings:["시나몬 롤 – 향이 고소함·산미를 연결","과일 타르트·크림 케이크 – 상큼+부드러움"] },
+  "인디아 몬순 말라바 AA": { url:"https://coffeejia.com/product/%EC%9D%B8%EB%94%94%EC%95%84-%EB%AA%AC%EC%88%9C-%EB%A7%90%EB%9D%BC%EB%B0%94-aa/122/category/63/display/1/", tagline:"몬순 풍미의 구수한 향, 낮은 산미", notes:"향 ●●●●○ / 바디 ●●●●○ / 단맛 ●●●○○", roast:"Medium (City)", pairings:["견과류 – 구수함 증폭","담백한 빵류 – 여운 유지"] },
+  "온두라스 SHG": { url:"https://coffeejia.com/product/%EC%98%A8%EB%91%90%EB%9D%BC%EC%8A%A4-shg/123/category/63/display/1/", tagline:"어느 한쪽으로 치우치지 않은 부드러운 균형", notes:"향 ●●●○○ / 바디 ●●●○○ / 신맛 ●●●○○ / 단맛 ●●●○○", roast:"Medium (City)", pairings:["마일드 케이크 – 무난","블루베리 무스/퍼프 초콜릿 – 은은한 단맛"] },
+  "예멘 모카 마타리": { url:"https://coffeejia.com/product/%EC%98%88%EB%A9%98-%EB%AA%A8%EC%B9%B4-%EB%A7%88%ED%83%80%EB%A6%AC/143/category/63/display/1/", tagline:"새콤 과일향 + 묵직한 바디", notes:"향 ●●●●○ / 바디 ●●●○○ / 신맛 ●●●○○", roast:"Medium-Dark (Full City)", pairings:["과일 크림케이크 – 조화","버터쿠키 – 담백하게 중심"] },
+  "코스타리카 따라주": { url:"https://coffeejia.com/product/%EC%BD%94%EC%8A%A4%ED%83%80%EB%A6%AC%EC%B9%B4-%EB%94%B0%EB%9D%BC%EC%A3%BC/128/category/63/display/1/", tagline:"밝은 감귤향 산미, 깨끗한 밸런스", notes:"향 ●●●○○ / 바디 ●●○○○ / 신맛 ●●●●○", roast:"Medium (Full City)", pairings:["페이스트리+초코 무스 – 산미가 부드러워짐","마블 케이크/쿠키 – 고소함 추가"] },
+  "드 칼리": { url:"https://coffeejia.com/product/%EB%93%9C%EC%B9%BC%EB%A6%AC-%EB%B8%94%EB%A0%8C%EB%94%A9%EC%BB%A4%ED%94%BC/112/category/62/display/1/", tagline:"리얼 이탈리안 감성의 짙은 풍미", notes:"바디 ●●●●○ / 향 ●●●●○ / 쓴맛 ●●●○○", roast:"Medium-Dark (Full City)", pairings:["버터쿠키·쇼콜라 롤 – 부드럽게 마감","초콜릿 무스케이크 – 달쌉 정석"] },
+  "드 꼬르망": { url:"https://coffeejia.com/product/%EB%93%9C%EA%BC%AC%EB%A5%B4%EB%A7%9D-%EB%B8%94%EB%A0%8C%EB%94%A9%EC%BB%A4%ED%94%BC/114/category/62/display/1/", tagline:"코나 블렌딩의 산뜻하고 세련된 감칠맛", notes:"향 ●●●●○ / 신맛 ●●●●○ / 바디 ●●●○○", roast:"Medium (City)", pairings:["카스테라·쿠키 – 산뜻한 산미와 조화","은은한 단맛 케이크 – 밸런스 강화"] },
+  "드 상젤리": { url:"https://coffeejia.com/product/%EB%93%9C%EC%83%B9%EC%A0%A4%EB%A6%AC-%EB%B8%94%EB%A0%8C%EB%94%A9%EC%BB%A4%ED%94%BC/113/category/62/display/1/", tagline:"한국인의 입맛: 구수·부드러움", notes:"바디 ●●●●○ / 균형 ●●●●○", roast:"Medium-Dark (Full City)", pairings:["부드러운 케이크 – 구수 풍미와 조화","견과류 파이·시나몬 롤 – 고소·향미 상승"] },
+  "드 랑세르": { url:"https://coffeejia.com/product/%EB%93%9C%EB%9E%91%EC%84%B8%EB%A5%B4-%EB%B8%94%EB%A0%8C%EB%94%A9%EC%BB%A4%ED%94%BC/115/category/62/display/1/", tagline:"목넘김 좋은 마일드, 깔끔한 풍미", notes:"향 ●●●●○ / 바디 ●●●○○ / 균형 ●●●○○", roast:"Medium (Full City)", pairings:["버터쿠키·마들렌 – 베스트 조합","가벼운 과자류 – 데일리"] },
+  "드 로렌": { url:"https://coffeejia.com/product/%EB%93%9C%EB%A1%9C%EB%A0%8C-%EB%B8%94%EB%A0%8C%EB%94%A9%EC%BB%A4%ED%94%BC/116/category/62/display/1/", tagline:"산뜻한 산미와 세련된 풍미", notes:"향 ●●●●○ / 바디 ●●●○○ / 신맛 ●●●○○", roast:"Medium (City)", pairings:["슈·마카롱 – 가벼운 달콤함","수제 초콜릿 – 달쌉이 향미 부각"] }
+};
+
+const TRAITS = ["acidity","body","sweet","bitter","balance"];
+
+// ===== 앱 로직 =====
+const $app = document.getElementById("app");
+let step = 0; // 0:intro, 1..6:질문, 7:결과
+const answers = {}; // qid -> oid
+let scores = { acidity:0, body:0, sweet:0, bitter:0, balance:0 };
+
+function render(){
+  $app.innerHTML = "";
+  const container = document.createElement("div");
+
+  if(step===0){
+    container.className = "center";
+    container.innerHTML = `
+      <div class="grid" style="gap:14px">
+        <div class="muted">coffeejia 테스트</div>
+        <h2 class="qtitle">🍰 내가 좋아하는 디저트로 알아보는 커피 원두</h2>
+        <p class="muted">“당신이 고른 디저트가 당신의 커피 취향을 알려줍니다!”<br>6개의 질문에 답하면, 성향에 딱 맞는 원두와 어울리는 디저트까지 알려드릴게요.</p>
+        <div><button class="cta" onclick="start()">시작하기</button></div>
+      </div>
+    `;
+  } else if(step>=1 && step<=QUESTIONS.length){
+    const q = QUESTIONS[step-1];
+    const progress = Math.round(((step-1)/QUESTIONS.length)*100);
+    const selected = answers[q.id];
+
+    const section = document.createElement("section");
+    section.innerHTML = `
+      <div class="grid" style="gap:10px">
+        <div class="progress"><div class="bar" style="width:${progress}%"></div></div>
+        <div class="muted">Q${step} / ${QUESTIONS.length}</div>
+        <div class="qtitle">${q.title}</div>
+        <div class="grid cols-2" id="opts"></div>
+        <div class="row">
+          <button class="btn ghost" onclick="prev()">이전</button>
+          <button class="btn" ${selected? "":"disabled"} onclick="next()">${step===QUESTIONS.length ? "결과 보기" : "다음"}</button>
+        </div>
+      </div>
+    `;
+    $app.appendChild(section);
+
+    const $opts = section.querySelector("#opts");
+    q.options.forEach(opt=>{
+      const btn = document.createElement("button");
+      btn.className = "opt"+(selected===opt.id?" selected":"");
+      btn.onclick = ()=>{ answers[q.id]=opt.id; render(); };
+      btn.innerHTML = `
+        <div>
+          <div class="label">${opt.label}</div>
+          <div class="desc">${opt.desc}</div>
+        </div>
+      `;
+      $opts.appendChild(btn);
+    });
+  } else {
+    // 결과
+    calcScores();
+    const {type, name, about, beans} = resolveResultType(scores);
+    const htmlBeans = beans.map(b=>beanCard(b)).join("");
+    container.innerHTML = `
+      <div class="grid" style="gap:12px">
+        <div class="muted">결과</div>
+        <div class="result-title">${name}</div>
+        <p>${about}</p>
+        <h4 style="margin:8px 0 0;font-weight:800;color:var(--sub)">어울리는 원두</h4>
+        <div class="beans">${htmlBeans}</div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn ghost" onclick="resetAll()">다시 테스트</button>
+        </div>
+      </div>
+    `;
+  }
+
+  $app.appendChild(container);
+}
+
+function start(){ step=1; render(); }
+function prev(){ step=Math.max(0,step-1); render(); }
+function next(){ step=Math.min(QUESTIONS.length+1,step+1); render(); }
+function resetAll(){
+  step=1;
+  for(const k in answers) delete answers[k];
+  scores = { acidity:0, body:0, sweet:0, bitter:0, balance:0 };
+  render();
+}
+
+function calcScores(){
+  scores = { acidity:0, body:0, sweet:0, bitter:0, balance:0 };
+  Object.entries(answers).forEach(([qid, oid])=>{
+    const q = QUESTIONS.find(qq=>qq.id===Number(qid));
+    const opt = q && q.options.find(o=>o.id===oid);
+    if(opt && opt.score){
+      for(const k in opt.score){ scores[k] += opt.score[k]; }
+    }
+  });
+}
+
+function resolveResultType(scores){
+  // 상위 2개 축 추출
+  const entries = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const [a,b] = entries;
+  const key = `${a[0].toUpperCase()}_${b[0].toUpperCase()}`;
+  const alt = `${b[0].toUpperCase()}_${a[0].toUpperCase()}`;
+  const t = RESULT_TYPES[key] || RESULT_TYPES[alt] || RESULT_TYPES.BALANCE_SWEET;
+  return { type:key, name:t.name, about:t.about, beans:t.beans };
+}
+
+function beanCard(name){
+  const b = BEAN_DB[name] || null;
+  if(!b) return "";
+  const linkText = `${name} 원두 보러가기`;
+  return `
+    <div class="bean">
+      <div class="name">${name}</div>
+      <div class="tag">${b.tagline}</div>
+      <div class="taste-note">테이스트 노트: ${b.notes.replace(/●/g, '<span class=\"filled\">●</span>').replace(/○/g, '<span class=\"empty\">○</span>')}</div>
+      <div class="muted">추천 로스팅: ${b.roast}</div>
+      <ul>${b.pairings.map(p=>`<li>${p}</li>`).join("")}</ul>
+      <div class="link"><a href="${b.url}" target="_blank" rel="noopener noreferrer">${linkText}</a></div>
+    </div>
+  `;
+}
+
+// 초기 렌더
+render();
+</script>
+</body>
+</html>
